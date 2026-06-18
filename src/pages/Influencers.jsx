@@ -420,6 +420,7 @@ function CharacterSheetSlot({ influencer, onSave, onLightbox }) {
     try {
       const url = await generateSingleImage({
         prompt, aspectRatio: ar, referenceImage: influencer.mainImage, onProgress: () => {},
+        model: localStorage.getItem('aiis_model_pref') || 'gpt_image_2',
         pendingKey: { influencerId: influencer.id, slot: 'characterSheetImage' },
         isCancelled: () => cancelRef.current,
       })
@@ -623,6 +624,7 @@ function CloseUpSlot({ influencer, imageKey, label, onSave, onLightbox, promptFn
       const url = await generateSingleImage({
         prompt, aspectRatio: ar,
         referenceImage: influencer.mainImage,
+        model: localStorage.getItem('aiis_model_pref') || 'gpt_image_2',
         onProgress: () => {},
         pendingKey: { influencerId: influencer.id, slot: imageKey },
         isCancelled: () => cancelRef.current,

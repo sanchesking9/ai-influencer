@@ -15,6 +15,14 @@ function Section({ title, children }) {
 }
 
 const CLAUDE_KEY = 'claude_api_key'
+const MODEL_PREF_KEY = 'aiis_model_pref'
+
+const IMAGE_MODELS = [
+  { id: 'gpt_image_2',       name: 'GPT Image 2',     tag: 'Max Quality',      tagColor: '#10B981', desc: 'Highest quality, maximum realism. Works with multiple refs.' },
+  { id: 'soul_2',            name: 'Higgsfield Soul',  tag: 'Influencer-Native', tagColor: '#EC4899', desc: 'Native influencer & fashion model. Single ref only.' },
+  { id: 'nano_banana_2',     name: 'Nano Banana Pro',  tag: 'Sharpest Detail',  tagColor: '#8B5CF6', desc: 'Maximum detail and portrait precision.' },
+  { id: 'nano_banana_flash', name: 'Nano Banana 2',    tag: 'Fastest',          tagColor: '#0EA5E9', desc: 'Rapid results, still premium quality.' },
+]
 
 export default function Settings() {
   const location = useLocation()
@@ -24,6 +32,10 @@ export default function Settings() {
   const [claudeKey, setClaudeKey] = useState(() => localStorage.getItem(CLAUDE_KEY) || '')
   const [claudeInput, setClaudeInput] = useState('')
   const [showClaudeInput, setShowClaudeInput] = useState(false)
+  const [imageModel, setImageModel] = useState(() => {
+    const saved = localStorage.getItem(MODEL_PREF_KEY)
+    return IMAGE_MODELS.find(m => m.id === saved) ? saved : 'gpt_image_2'
+  })
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     if (params.get('connected') === '1') {
@@ -122,8 +134,37 @@ export default function Settings() {
           )}
         </Section>
 
-        <Section title="Claude AI">
+        <Section title="Image Model">
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.6 }}>
+            Default model used across Photo Studio, character sheets, and content generation.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {IMAGE_MODELS.map(m => {
+              const on = imageModel === m.id
+              return (
+                <button key={m.id} onClick={() => { setImageModel(m.id); localStorage.setItem(MODEL_PREF_KEY, m.id) }} style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12,
+                  border: `1.5px solid ${on ? '#8B5CF6' : 'var(--border)'}`,
+                  background: on ? 'rgba(139,92,246,0.08)' : 'var(--bg)',
+                  cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                  transition: 'all 0.15s',
+                  boxShadow: on ? '0 0 0 1px #8B5CF655' : 'none',
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 2 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: on ? '#8B5CF6' : 'var(--text-primary)' }}>{m.name}</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: m.tagColor + '22', color: m.tagColor }}>{m.tag}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{m.desc}</div>
+                  </div>
+                  {on && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#8B5CF6', flexShrink: 0 }} />}
+                </button>
+              )
+            })}
+          </div>
+        </Section>
+
+        <Section title="Claude AI">          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.6 }}>
             Add your Anthropic API key to let Claude analyze the image just before generating your product character sheet.
           </p>
           {claudeKey ? (

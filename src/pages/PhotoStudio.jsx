@@ -381,6 +381,13 @@ function loadSettings(id) {
 
 const PS_DEFAULTS = { location: 'coffee-shop', timeOfDay: 'afternoon', pose: 'front', outfitPreset: 'current', stance: 'standing', aspectRatio: '9:16', resolution: '4k', outputCount: 1, expression: 'natural', gaze: 'at-camera', propText: '', wardrobeText: '', hairstyleText: '' }
 
+const PS_MODELS = [
+  { id: 'gpt_image_2',       label: 'GPT Image 2',    tag: 'Quality',   tagColor: '#10B981' },
+  { id: 'soul_2',            label: 'Soul',            tag: 'Native',    tagColor: '#EC4899' },
+  { id: 'nano_banana_2',     label: 'Nano Pro',        tag: 'Detail',    tagColor: '#8B5CF6' },
+  { id: 'nano_banana_flash', label: 'Nano Fast',       tag: 'Speed',     tagColor: '#0EA5E9' },
+]
+
 export default function PhotoStudioPanel({ influencer, onGoToWardrobe, onUseAsStartFrame, restoreKey = 0 }) {
   const [, setInfluencers] = useInfluencers()
   const [brandDeals] = useBrandDeals()
@@ -394,6 +401,10 @@ export default function PhotoStudioPanel({ influencer, onGoToWardrobe, onUseAsSt
   const [aspectRatio,  setAspectRatio]  = useState(_s.aspectRatio  ?? PS_DEFAULTS.aspectRatio)
   const [resolution,   setResolution]   = useState(_s.resolution   ?? PS_DEFAULTS.resolution)
   const [outputCount,  setOutputCount]  = useState(_s.outputCount  ?? PS_DEFAULTS.outputCount)
+  const [imageModel,   setImageModel]   = useState(() => {
+    const saved = localStorage.getItem('aiis_model_pref')
+    return PS_MODELS.find(m => m.id === saved) ? saved : 'gpt_image_2'
+  })
   const [expression,   setExpression]   = useState(_s.expression   ?? PS_DEFAULTS.expression)
   const [gaze,         setGaze]         = useState(_s.gaze         ?? PS_DEFAULTS.gaze)
   const [propText,     setPropText]     = useState(_s.propText      ?? PS_DEFAULTS.propText)
@@ -724,7 +735,7 @@ export default function PhotoStudioPanel({ influencer, onGoToWardrobe, onUseAsSt
       const batchId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
       try {
         await generateNImages({
-          prompt, count: outputCount, aspectRatio, resolution,
+          prompt, count: outputCount, aspectRatio, resolution, model: imageModel,
           referenceImage: faceRef,
           outfitImage,
           closeUpImage1: closeUp1,
@@ -1498,6 +1509,25 @@ export default function PhotoStudioPanel({ influencer, onGoToWardrobe, onUseAsSt
             </button>
           ))}
         </div>
+        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 7 }}>
+          Model
+        </div>
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 14 }}>
+          {PS_MODELS.map(m => (
+            <button key={m.id} onClick={() => { setImageModel(m.id); localStorage.setItem('aiis_model_pref', m.id) }} style={{
+              ...chipStyle(imageModel === m.id),
+              display: 'flex', alignItems: 'center', gap: 5,
+            }}>
+              {m.label}
+              <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 4px', borderRadius: 3, background: m.tagColor + '33', color: m.tagColor }}>{m.tag}</span>
+            </button>
+          ))}
+        </div>
+        {imageModel === 'soul_2' && (
+          <div style={{ fontSize: 11, color: '#F59E0B', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '7px 10px', marginBottom: 10 }}>
+            ⚠ Soul works best with a single reference image. Close-ups and outfit refs may be ignored.
+          </div>
+        )}
         <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 7 }}>
           Output · {outputCount} {outputCount === 1 ? 'image' : 'images'}
         </div>
