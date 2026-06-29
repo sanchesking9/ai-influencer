@@ -413,7 +413,7 @@ const CANDID_ACTIONS = [
 // @image1 = identity (influencer main photo), @image2 = outfit (character sheet / wardrobe card).
 // Prompt is short and directive: placement + action only. Do not re-describe the refs.
 
-export function buildPhotoStudioPrompt({ influencer, location, timeOfDay, pose, vibe, wardrobeText, hairstyleText, outfitPreset, stance, aspectRatio, expression, gaze = 'at-camera', propText, propRefs = [], faceTag = null, wardrobeTag = null, closeUp1Tag = null, closeUp2Tag = null, variationIdx = null }) {
+export function buildPhotoStudioPrompt({ influencer, location, timeOfDay, pose, vibe, wardrobeText, hairstyleText, outfitPreset, stance, aspectRatio, expression, gaze = 'at-camera', propText, propRefs = [], faceTag = null, wardrobeTag = null, closeUp1Tag = null, closeUp2Tag = null, roomTag = null, variationIdx = null }) {
   const loc       = location    || 'coffee-shop'
   const tod       = timeOfDay   || 'afternoon'
   const poseId    = pose        || 'front'
@@ -519,14 +519,17 @@ export function buildPhotoStudioPrompt({ influencer, location, timeOfDay, pose, 
     : ''
 
   // ── Background people — mirror selfie locations are always empty; others cycle ───
-  const peopleLine = (loc === 'bathroom' || loc === 'bedroom' || loc === 'hotel')
+  const peopleLine = (loc === 'bathroom' || loc === 'bedroom' || loc === 'hotel' || roomTag)
     ? 'No other people in frame.'
     : BACKGROUND_PEOPLE[variationIdx !== null ? variationIdx % BACKGROUND_PEOPLE.length : 0]
 
   // ── Location label + time atmosphere + lighting ───────────────────
-  const locationLabel = LOCATION_LABEL[loc] || (loc?.trim() ? `The location is ${loc.trim()}.` : '')
+  const locationLabel = roomTag
+    ? `Use ${roomTag} as the exact location and background environment — reproduce the room's decor, furniture, walls, and lighting setup.`
+    : LOCATION_LABEL[loc] || (loc?.trim() ? `The location is ${loc.trim()}.` : '')
+  const sceneDesc     = roomTag ? '' : scene
   const timeAtmo      = TIME_ATMO[tod]      || ''
-  const light         = SHORT_LIGHTING[loc]?.[tod] || ''
+  const light         = roomTag ? '' : (SHORT_LIGHTING[loc]?.[tod] || '')
 
   // ── Camera + framing ──────────────────────────────────────────────
   const cameraFeel = vibe === 'editorial' ? 'Eye-level, 50mm lens feel.'
@@ -551,7 +554,7 @@ export function buildPhotoStudioPrompt({ influencer, location, timeOfDay, pose, 
     expressionDesc,
     gazeDesc,
     propDesc,
-    [locationLabel, scene, timeAtmo, light].filter(Boolean).join(' '),
+    [locationLabel, sceneDesc, timeAtmo, light].filter(Boolean).join(' '),
     `${cameraFeel} ${framing}`,
     `Deep focus, no bokeh, photorealistic. ${peopleLine}`,
   ].filter(Boolean).join(' ')

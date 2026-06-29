@@ -405,6 +405,11 @@ export default function PhotoStudioPanel({ influencer, onGoToWardrobe, onUseAsSt
     const saved = localStorage.getItem('aiis_model_pref')
     return PS_MODELS.find(m => m.id === saved) ? saved : 'gpt_image_2'
   })
+  const [selectedRoomId, setSelectedRoomId] = useState(() => {
+    try { return localStorage.getItem(`ps_room_id_${influencer?.id}`) || '' } catch { return '' }
+  })
+  const homeSlots = (influencer?.homeSlots || []).filter(s => s.image)
+  const selectedRoom = homeSlots.find(s => s.id === selectedRoomId) || null
   const [expression,   setExpression]   = useState(_s.expression   ?? PS_DEFAULTS.expression)
   const [gaze,         setGaze]         = useState(_s.gaze         ?? PS_DEFAULTS.gaze)
   const [propText,     setPropText]     = useState(_s.propText      ?? PS_DEFAULTS.propText)
@@ -541,6 +546,8 @@ export default function PhotoStudioPanel({ influencer, onGoToWardrobe, onUseAsSt
     setWardrobeOpen(false)
     const pending = id ? (localStorage.getItem(`wd_result_${id}`) || null) : null
     setWardrobePending(pending)
+    // Restore room selection per influencer
+    try { setSelectedRoomId(localStorage.getItem(`ps_room_id_${id}`) || '') } catch { setSelectedRoomId('') }
     try {
       const ps = JSON.parse(localStorage.getItem(`ps_props_${id}`) || 'null')
       setPropSlots(Array.isArray(ps) ? [...ps, null, null, null].slice(0, 3) : [null, null, null])
@@ -720,6 +727,7 @@ export default function PhotoStudioPanel({ influencer, onGoToWardrobe, onUseAsSt
       const faceRef      = overrideRef || influencer?.mainImage || null
       const closeUp1     = influencer?.closeUpImage1 || null
       const closeUp2     = influencer?.closeUpImage2 || null
+      const roomImage    = selectedRoom?.image || null
       let tagIdx = 0
       const faceTag      = faceRef    ? `@image${++tagIdx}` : null
       const wardrobeTag  = outfitImage ? `@image${++tagIdx}` : null
@@ -728,8 +736,9 @@ export default function PhotoStudioPanel({ influencer, onGoToWardrobe, onUseAsSt
       const allPropImages = propSlots.filter(s => s?.image).map(s => ({ img: s.image, mode: s.mode || 'holding' }))
       const propTags = allPropImages.map(() => `@image${++tagIdx}`)
       const propRefs = allPropImages.map(({ mode }, i) => ({ tag: propTags[i], mode }))
+      const roomTag      = roomImage  ? `@image${++tagIdx}` : null
 
-      const promptArgs = { influencer, location, timeOfDay, pose, vibe, wardrobeText, hairstyleText, outfitPreset: resolvedPreset, stance, aspectRatio, expression, gaze, propText, propRefs, faceTag, wardrobeTag, closeUp1Tag, closeUp2Tag }
+      const promptArgs = { influencer, location, timeOfDay, pose, vibe, wardrobeText, hairstyleText, outfitPreset: resolvedPreset, stance, aspectRatio, expression, gaze, propText, propRefs, faceTag, wardrobeTag, closeUp1Tag, closeUp2Tag, roomTag }
       const prompt = Array.from({ length: outputCount }, (_, i) => buildPhotoStudioPrompt({ ...promptArgs, variationIdx: i }))
 
       const batchId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
@@ -741,6 +750,7 @@ export default function PhotoStudioPanel({ influencer, onGoToWardrobe, onUseAsSt
           closeUpImage1: closeUp1,
           closeUpImage2: closeUp2,
           propImages: allPropImages.map(({ img }) => img),
+          roomImage,
           onProgress: pct => setSmoothPct(prev => Math.max(prev, pct)),
           onResult: url => {
             anySuccess = true
@@ -968,9 +978,44 @@ export default function PhotoStudioPanel({ influencer, onGoToWardrobe, onUseAsSt
       {/* ── Step 1: Location ── */}
       <PSec>
         <PSHeader n={1} title="Location" />
+        {homeSlots.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 7 }}>
+              🏠 Room Reference
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: selectedRoom ? 10 : 0 }}>
+              <button
+                onClick={() => { setSelectedRoomId(''); localStorage.setItem(`ps_room_id_${influencer?.id}`, '') }}
+                style={{ ...chipStyle(!selectedRoomId), fontSize: 11 }}
+              >None</button>
+              {homeSlots.map(s => {
+                const on = selectedRoomId === s.id
+                return (
+                  <button key={s.id}
+                    onClick={() => { setSelectedRoomId(s.id); localStorage.setItem(`ps_room_id_${influencer?.id}`, s.id) }}
+                    style={{ ...chipStyle(on), display: 'flex', alignItems: 'center', gap: 5, fontSize: 11 }}
+                  >
+                    {s.image && <img src={s.image} alt="" style={{ width: 16, height: 16, borderRadius: 3, objectFit: 'cover', flexShrink: 0 }} />}
+                    {s.name}
+                  </button>
+                )
+              })}
+            </div>
+            {selectedRoom && (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 10px', background: 'var(--bg-tertiary)', borderRadius: 10, marginBottom: 10, border: '1.5px solid rgba(139,92,246,0.25)' }}>
+                <img src={selectedRoom.image} alt={selectedRoom.name} style={{ width: 56, height: 42, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{selectedRoom.name}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 2 }}>Used as background — text location below is ignored</div>
+                </div>
+              </div>
+            )}
+            <div style={{ width: '100%', height: 1, background: 'var(--border-subtle)', marginBottom: 10 }} />
+          </div>
+        )}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
           {LOCATIONS.map(l => (
-            <button key={l.id} onClick={() => { setLocation(l.id); setRightMode('location') }} style={chipStyle(location === l.id)}>
+            <button key={l.id} onClick={() => { setLocation(l.id); setRightMode('location') }} style={{ ...chipStyle(location === l.id), opacity: selectedRoom ? 0.4 : 1 }}>
               {l.icon} {l.label}
             </button>
           ))}
@@ -980,6 +1025,7 @@ export default function PhotoStudioPanel({ influencer, onGoToWardrobe, onUseAsSt
           placeholder="Or type any location… Eiffel Tower, Tokyo alley, ski resort"
           value={LOCATIONS.some(l => l.id === location) ? '' : (location || '')}
           onChange={e => setLocation(e.target.value || null)}
+          disabled={!!selectedRoom}
           style={{
             width: '100%', boxSizing: 'border-box',
             padding: '9px 12px', borderRadius: 10, fontSize: 12,
@@ -987,6 +1033,7 @@ export default function PhotoStudioPanel({ influencer, onGoToWardrobe, onUseAsSt
             background: 'var(--bg)', color: 'var(--text-primary)',
             outline: 'none', fontFamily: 'inherit',
             transition: 'border-color 0.15s',
+            opacity: selectedRoom ? 0.4 : 1,
           }}
         />
       </PSec>

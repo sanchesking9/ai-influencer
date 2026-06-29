@@ -878,7 +878,7 @@ export async function generateSingleImage({ prompt, aspectRatio = '16:9', resolu
 // ── Photo Studio batch generation ────────────────────────────────────────────
 // Uploads refs once, launches all N jobs in parallel, polls together, and streams
 // results via onResult(url) as each image completes.
-export async function generateNImages({ prompt, count = 1, aspectRatio = '9:16', resolution = '4k', model = 'gpt_image_2', referenceImage = null, outfitImage = null, closeUpImage1 = null, closeUpImage2 = null, propImages = [], onProgress, onResult, isCancelled, pendingKey = null }) {
+export async function generateNImages({ prompt, count = 1, aspectRatio = '9:16', resolution = '4k', model = 'gpt_image_2', referenceImage = null, outfitImage = null, closeUpImage1 = null, closeUpImage2 = null, propImages = [], roomImage = null, onProgress, onResult, isCancelled, pendingKey = null }) {
   await initSession()
   onProgress?.(5)
 
@@ -890,6 +890,7 @@ export async function generateNImages({ prompt, count = 1, aspectRatio = '9:16',
     { img: closeUpImage1,  label: 'closeup1' },
     { img: closeUpImage2,  label: 'closeup2' },
     ...propImages.map((img, i) => ({ img, label: `prop${i + 1}` })),
+    { img: roomImage,      label: 'room'     },
   ].filter(e => e.img)
 
   const uploaded = await Promise.all(refEntries.map(async ({ img, label }) => {
