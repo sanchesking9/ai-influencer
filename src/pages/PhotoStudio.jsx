@@ -405,6 +405,7 @@ export default function PhotoStudioPanel({ influencer, onGoToWardrobe, onUseAsSt
     const saved = localStorage.getItem('aiis_model_pref')
     return PS_MODELS.find(m => m.id === saved) ? saved : 'gpt_image_2'
   })
+  const lastUsedModelRef = useRef(null)
   const [selectedRoomId, setSelectedRoomId] = useState(() => {
     try { return localStorage.getItem(`ps_room_id_${influencer?.id}`) || '' } catch { return '' }
   })
@@ -606,6 +607,10 @@ export default function PhotoStudioPanel({ influencer, onGoToWardrobe, onUseAsSt
       if (s.aspectRatio)  setAspectRatio(s.aspectRatio)
       if (s.resolution)   setResolution(s.resolution)
       if (s.outputCount)  setOutputCount(s.outputCount)
+      if (s.imageModel && PS_MODELS.find(m => m.id === s.imageModel)) {
+        setImageModel(s.imageModel)
+        localStorage.setItem('aiis_model_pref', s.imageModel)
+      }
     } catch {}
   }, [influencer?.id, restoreKey]) // eslint-disable-line
 
@@ -634,7 +639,7 @@ export default function PhotoStudioPanel({ influencer, onGoToWardrobe, onUseAsSt
 
   function addToHistory(url, batchId) {
     const item = { histId: `${Date.now()}-${Math.random().toString(36).slice(2,7)}`, url, batchId, influencerId: influencer?.id, influencerName: influencer?.name, location, timeOfDay, pose, vibe, aspectRatio, createdAt: Date.now(),
-      settings: { location, timeOfDay, pose, stance, expression, gaze, outfitPreset, wardrobeText, hairstyleText, propText, aspectRatio, resolution, outputCount }
+      settings: { location, timeOfDay, pose, stance, expression, gaze, outfitPreset, wardrobeText, hairstyleText, propText, aspectRatio, resolution, outputCount, imageModel }
     }
     setHistory(prev => {
       const next = [item, ...prev].slice(0, MAX_HISTORY)
@@ -703,6 +708,7 @@ export default function PhotoStudioPanel({ influencer, onGoToWardrobe, onUseAsSt
     if (!influencer || generatingForIdRef.current === influencer?.id) return
     cancelRef.current = false
     generatingForIdRef.current = influencer?.id
+    lastUsedModelRef.current = imageModel
     clearPendingPhoto(influencer?.id)  // clear any stale pending entry before starting fresh
     setLockedCount(outputCount)
     setGenerating(true)
@@ -1635,8 +1641,20 @@ export default function PhotoStudioPanel({ influencer, onGoToWardrobe, onUseAsSt
         </div>
       )}
 
+      {/* ── Model indicator — shown during generation and on results ── */}
+      {(isActivelyGenerating || currentImgs.length > 0) && (() => {
+        const mid = isActivelyGenerating ? imageModel : (lastUsedModelRef.current || imageModel)
+        const m = PS_MODELS.find(x => x.id === mid)
+        if (!m) return null
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 2 }}>
+            <span style={{ fontWeight: 600 }}>{isActivelyGenerating ? 'Generating with' : 'Generated with'}</span>
+            <span style={{ fontWeight: 700, color: m.tagColor }}>{m.label}</span>
+            <span style={{ padding: '1px 5px', borderRadius: 3, background: m.tagColor + '22', color: m.tagColor, fontSize: 9, fontWeight: 700 }}>{m.tag}</span>
+          </div>
+        )
+      })()}
       {/* ── Multi-image output (batch > 1) ── */}
-      {(isActivelyGenerating || currentImgs.length > 0) && (isActivelyGenerating ? lockedCount : currentImgs.length) > 1 && (
         <>
         <div style={{
           display: 'flex',
